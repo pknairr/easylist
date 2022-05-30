@@ -2,6 +2,6 @@
     "name": "easylist/easylist",
     "description": "Dynamic Listing of DB table and Search",
     "type": "library",
-    "minimum-stability": "dev",
+    "minimum-stability": "stable",
     "require": {}
 }
