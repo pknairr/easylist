@@ -2,6 +2,6 @@
     "name": "easylist/easylist",
     "description": "Dynamic Listing of DB table and Search",
     "require": {
-        "php": ">=7.4"
+        "php": ">=5.7"
     }
 }
