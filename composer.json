@@ -1,0 +1,20 @@
+{
+    "name": "easy-list",
+    "type": "library",
+    "description": "Dynamic Listing of DB table and Search ",
+    "keywords": ["Table Listing", "Dynamic Lister"],
+    "homepage": "http://www.<SITE>/",
+    "license": "MIT",
+    "repositories": [
+        {
+            "type": "vcs",
+            "url": "https://github.com/<LOCATION>.git"
+        }
+    ],
+    "require": {
+        "php": ">=5.3.0"
+    },
+    "autoload": {
+        "files": [ "EasyList.php" ]
+    }
+}
