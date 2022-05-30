@@ -4,5 +4,5 @@
     "require": {
         "php": "^5.4.0"
     },
-    "minimum-stability": "dev-main"
+    "minimum-stability": "1.0"
 }
