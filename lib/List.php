@@ -65,12 +65,11 @@ class DynaList
                // $sql .= $options['offset'];
             }
             
-            $conn = mysqli_connect(static::$host, static::$username, static::$password) OR trigger_error(mysql_error(),E_USER_ERROR);
-            mysql_select_db(static::$database, $conn);
-            $query = mysql_query($sql, $conn) OR trigger_error(mysql_error(),E_USER_ERROR);
-            echo 1;            
+            $conn = mysqli_connect(self::$host, self::$username, self::$password) OR trigger_error(mysql_error(),E_USER_ERROR);
             
+            mysql_select_db(self::$database, $conn);
             
+            $query = mysqli_query($conn, $sql) OR trigger_error(mysql_error(),E_USER_ERROR);
             
             if (mysql_num_rows($query) > 0) {
                 while ($row = mysql_fetch_assoc($query)) {
@@ -81,8 +80,6 @@ class DynaList
             mysql_close($conn);
             
         } catch(Excetion $e){
-            echo "<pre>";
-            print_r($e);
             //throw new Exception($e-getMessage());
         }
         
