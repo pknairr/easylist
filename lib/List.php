@@ -8,37 +8,38 @@ use PDOException;
 
 class DynaList
 {
-    public static $host;
-    public static $database;
-    public static $username;
-    public static $password;
-    public static $connection;
+    //public static $host;
+    //public static $database;
+    //public static $username;
+    //public static $password;
+    //public static $connection;
     
     /**
      * @param array $info
      * Description : Store sql credential 
      */
-    public static function Initialise($info)
+    /*public static function Initialise($info)
     {
         static::$host     = $info['hostname'];
         static::$database = $info['database'];
         static::$username = $info['username'];
         static::$password = $info['password'];
-    }
+    }*/
     
     /**
      * Creates Connection
      */
     public static function Connection()
     {
-        try {
+        /*try {
             self::$connection = new PDO("mysql:host=".static::$host.";dbname=". static::$database, static::$username, static::$password);
             self::$connection->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
         } catch(PDOException $e) {
             throw new Exception("Connection failed : " . $e->getMessage());
-        }
+        }*/
         
-        return $conn;
+        $conn = new ListConnection();
+        self::$connection = $conn->setConnection();
     }
     
     /**
