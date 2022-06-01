@@ -3,6 +3,8 @@
  * @package EasyList
  */
 namespace EasyList;
+use PDO;
+use PDOException;
 
 class DynaList
 {
@@ -10,6 +12,7 @@ class DynaList
     public static $database;
     public static $username;
     public static $password;
+    public static $connection;
     
     /**
      * @param array $info
@@ -21,6 +24,21 @@ class DynaList
         static::$database = $info['database'];
         static::$username = $info['username'];
         static::$password = $info['password'];
+    }
+    
+    /**
+     * Creates Connection
+     */
+    public static function Connection()
+    {
+        try {
+            self::$connection = new PDO("mysql:host=".static::$host.";dbname=". static::$database, static::$username, static::$password);
+            self::$connection->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+        } catch(PDOException $e) {
+            throw new Exception("Connection failed : " . $e->getMessage());
+        }
+        
+        return $conn;
     }
     
     /**
@@ -103,14 +121,19 @@ class DynaList
             }
                     
             if($return_data != "QUERY"){
-                $conn = mysqli_connect(self::$host, self::$username, self::$password) OR trigger_error(mysql_error(),E_USER_ERROR);
-                mysql_select_db(self::$database, $conn);
+                self::Connection();
+                //$conn = mysqli_connect(self::$host, self::$username, self::$password) OR trigger_error(mysql_error(),E_USER_ERROR);
+                //mysql_select_db(self::$database, $conn);
                 
                 //Start : Pagination section 
                 if($pagination == "YES"){
                     if($total_records == 0){
-                        $query = mysqli_query($conn, "SELECT COUNT(*) AS count FROM (SELECT 1 " . $sql . ") AS query") OR trigger_error(mysql_error(),E_USER_ERROR);
-                        $rec = mysql_fetch_assoc($query);
+                        
+                        $stmt = self::$connection->prepare("SELECT COUNT(*) AS count FROM (SELECT 1 " . $sql . ") AS query");
+                        $stmt->execute();
+                        $rec = $stmt->fetch(PDO::FETCH_ASSOC);
+                        //$query = mysqli_query($conn, "SELECT COUNT(*) AS count FROM (SELECT 1 " . $sql . ") AS query") OR trigger_error(mysql_error(),E_USER_ERROR);
+                        //$rec = mysql_fetch_assoc($query);
                         $mainData["total-records"] = $total_records = ($rec["count"]) ? $rec["count"] : 0;
                     }
                     
@@ -126,12 +149,16 @@ class DynaList
                 }
                 //End : Pagination section
                 
-                $query = mysqli_query($conn, $select . $sql) OR trigger_error(mysql_error(),E_USER_ERROR);
-                if (mysql_num_rows($query) > 0) {
-                    while ($row = mysql_fetch_assoc($query)) {
-                        $data[] = $row;
-                    }
-                }
+                $stmt = self::$connection->prepare($select . $sql);
+                $stmt->execute();
+                $data = $stmt->fetchAll(PDO::FETCH_ASSOC);
+                
+                //$query = mysqli_query($conn, $select . $sql) OR trigger_error(mysql_error(),E_USER_ERROR);
+                //if (mysql_num_rows($query) > 0) {
+                //    while ($row = mysql_fetch_assoc($query)) {
+                //        $data[] = $row;
+                //    }
+                //}
             }
             
             //Handling return data
