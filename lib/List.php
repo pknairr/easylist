@@ -11,6 +11,10 @@ class DynaList
     public static $username;
     public static $password;
     
+    /**
+     * @param array $info
+     * Description : Store sql credential 
+     */
     public static function Initialise($info)
     {
         static::$host     = $info['hostname'];
@@ -20,28 +24,29 @@ class DynaList
     }
     
     /**
-     * 
      * @param array $options
      * $options array : select, joins, from, conditions, group, having, limit, offset, order 
      * array(
          "select" 	=> "<Comma separated column list>"
         ,"from" 	=> "<From table with alias>"
         ,"joins" 	=> "<Join statements>"
-        ,"condition" 	=> array(
-        			array("condition" => "name = ?", "value" => "<FILTER-NAME>", "Operation" => "AND" ),
-        			array("condition" => "age = ?", "value" => "<FILTER-NAME>", "Operation" => "OR" ),
-        			array("condition" => "(name = ? AND age IN( ?) )", "value" => array(<FILTER-NAME>, <ARRAY-FILTER-AGE->)), "Operation" => "OR" )
+        ,"conditions" => array(
+        			array("condition" => "name = ?", "value" => "<FILTER-NAME>", "operation" => "AND" ),
+        			array("condition" => "age = ?", "value" => "<FILTER-AGE>", "operation" => "OR" ),
+        			array("condition" => "(name = ? AND age IN( ?) )", "value" => array(<FILTER-NAME>, <ARRAY-FILTER-AGE->)), "operation" => "OR" )
         		)
         ,"group" 	=> "<Comma separated group names>"
-        ,"having" 	=> "<having conditions>"
-        ,"order" 	=> "<Comma separated order coluns>"
-        ,"limit" 	=> "<Integer value of limit>"
-        ,"offset" 	=> "<Integer value of offeset>"
-        ,"return-data" => "<HTML / JSON / PLAIN>"
+        ,"having" 	=> array(
+        			array("condition" => "name = ?", "value" => "<FILTER-NAME>", "operation" => "AND" ),
+        			array("condition" => "age = ?", "value" => "<FILTER-NAME>", "operation" => "OR" )
+        		)
+        ,"order" 	=> "<Comma separated order coluns with ASC/DESC key >"
+        ,"return-data" => "<HTML / JSON / PLAIN / QUERY>"
         ,"view"	    => "<view location if return-data is HTML>"
+        ,"page" 	=> "<page number>"
+        ,"pagination" 	=> "YES | NO"
         ,"page-size" => "<page size>"
-        ,"<addtional element if required>"
-        )
+       )
      */
     public static function Page($options)
     {
@@ -49,11 +54,13 @@ class DynaList
         $select             = "";
         $query              = "";
         $viewData           = "";
+        $subCondition       = "";
         
         $return_data        = isset($options["return-data"]) ? $options["return-data"] : "JSON";
         $page_size          = isset($_POST['page-size']) ? $_POST['page-size'] : (isset($options["page-size"]) ? $options["page-size"] : 25);
         $page               = isset($_POST['page']) ? $_POST['page'] : (isset($options["page"]) ? $options["page"] : 1);
         $total_records      = isset($_POST['total-records']) ? $_POST['total-records'] : (isset($options["total-records"]) ? $options["page"] : 0);
+        $pagination         = isset($options["pagination"]) ? $options["pagination"] : 'YES';
         
         $mainData = array(
              "page-size"       => $page_size
@@ -78,7 +85,8 @@ class DynaList
             }
             
             if(isset($options['conditions']) && $options['conditions'] !=""){
-                $sql .= " WHERE " .  $options['conditions'];
+                $subCondition = self::conditionBuilder($options['conditions']);
+                $sql .= " WHERE " .  $subCondition;
             }
             
             if(isset($options['group']) && $options['group'] !=""){
@@ -86,35 +94,43 @@ class DynaList
             }
             
             if(isset($options['having']) && $options['having'] !=""){
-                $sql .=  " HAVING " . $options['having'];
+                $subCondition = self::conditionBuilder($options['having']);
+                $sql .=  " HAVING " . $subCondition;
             }
             
             if(isset($options['order']) && $options['order'] !=""){
                 $sql .=  " ORDER BY " . $options['order'];
             }
-            
-            if(isset($options['limit']) && $options['limit'] !=""){
-                $sql .= " LIMIT " . $options['limit'];
-            }
-            
-            if(isset($options['offset']) && $options['offset'] !=""){
-               // $sql .= $options['offset'];
-            }
-            
-            $conn = mysqli_connect(self::$host, self::$username, self::$password) OR trigger_error(mysql_error(),E_USER_ERROR);
-            mysql_select_db(self::$database, $conn);
-            
-            //Set record count
-            if($total_records == 0){
-                $query = mysqli_query($conn, "SELECT COUNT(*) AS count " . $sql) OR trigger_error(mysql_error(),E_USER_ERROR);
-                $rec = mysql_fetch_assoc($query);
-                $mainData["total-records"] = $total_records = ($rec["count"]) ? $rec["count"] : 0;
-            }
-            
-            $query = mysqli_query($conn, $select . $sql) OR trigger_error(mysql_error(),E_USER_ERROR);
-            if (mysql_num_rows($query) > 0) {
-                while ($row = mysql_fetch_assoc($query)) {
-                    $data[] = $row;
+                    
+            if($return_data != "QUERY"){
+                $conn = mysqli_connect(self::$host, self::$username, self::$password) OR trigger_error(mysql_error(),E_USER_ERROR);
+                mysql_select_db(self::$database, $conn);
+                
+                //Start : Pagination section 
+                if($pagination == "YES"){
+                    if($total_records == 0){
+                        $query = mysqli_query($conn, "SELECT COUNT(*) AS count FROM (SELECT 1 " . $sql . ") AS query") OR trigger_error(mysql_error(),E_USER_ERROR);
+                        $rec = mysql_fetch_assoc($query);
+                        $mainData["total-records"] = $total_records = ($rec["count"]) ? $rec["count"] : 0;
+                    }
+                    
+                    $total_records_pages = intval(ceil($total_records / $page_size));
+                    $next_page = ($page === $total_records_pages) ? $page : $page + 1;
+                    $prev_page = ($page == 1) ? 1 : $page - 1;
+                    $offset    = ($page - 1) * $page_size;
+                    
+                    $mainData["next-page"] = $next_page;
+                    $mainData["prev-page"] = $prev_page;
+                    
+                    $sql .= " LIMIT {$offset},{$page_size}";
+                }
+                //End : Pagination section
+                
+                $query = mysqli_query($conn, $select . $sql) OR trigger_error(mysql_error(),E_USER_ERROR);
+                if (mysql_num_rows($query) > 0) {
+                    while ($row = mysql_fetch_assoc($query)) {
+                        $data[] = $row;
+                    }
                 }
             }
             
@@ -124,11 +140,25 @@ class DynaList
                     //:TODO
                     $viewData = "";
                     break;
+
                 case 'JSON' :
                     $viewData = $data;
                     break;
+
                 case 'PLAIN' :
                     //:TODO
+                    $viewData = "";
+                    break;
+
+                case 'QUERY' :
+                    unset($mainData["page-size"]);
+                    unset($mainData["page"]);
+                    unset($mainData["total-records"]);
+                    unset($mainData["return-data"]);
+                    unset($mainData["data"]);
+                    
+                    $mainData["query"] = $select . $sql;
+                    $mainData["count-query"] = "SELECT COUNT(*) AS count FROM (SELECT 1 " . $sql . ") AS query";
                     $viewData = "";
                     break;
             }
@@ -145,8 +175,67 @@ class DynaList
     }
     
     /**
-     * 
-     * @param unknown $options
+     * @param array $condition
+     * @return string
+     * Description : Prepare condtions by including values 
+     */
+    public static function conditionBuilder($condition){
+        $result = "";
+        
+        foreach($condition AS $eachCondition){
+            $subCondition = "";
+            $subValues = "";
+            
+            $clean_condition = self::ceanQuotes($eachCondition['condition']);
+            $ary_subCondition = explode("?", $clean_condition);
+            
+            for($i = 0; $i < count($ary_subCondition); $i++){
+                if($i == 0) {continue;}
+                
+                if(is_array($eachCondition['value'])){
+                    if(is_array($eachCondition['value'][$i-1])){
+                        $subValues = "'" . implode("','", $eachCondition['value'][$i-1]) . "'";
+                        $subCondition .= $subValues;
+                    } else {
+                        $subCondition .= "'" . $eachCondition['value'][$i-1] . "'";
+                    }
+                } else {
+                    $subCondition .= "'" . $eachCondition['value'] . "'";
+                }
+                
+                $subCondition .= " " . $ary_subCondition[$i];
+            }
+            
+            $result .= $ary_subCondition[0] . $subCondition . " " . $eachCondition["operation"] . " ";
+        }
+        
+        $result = trim($result, 'AND ');
+        $result = trim($result, 'OR ');
+        
+        return $result;
+    }
+    
+    /**
+     * @param String $condition
+     * @return String
+     * Description : Remove quotes before question marks
+     */
+    public static function ceanQuotes($condition){
+        $result = $condition;
+        
+        $pattern = "/'\s*\?\s*'/i";
+        $result = preg_replace($pattern, ' ? ', $result);
+        $pattern = '/"\s*\?\s*"/i';
+        $result = preg_replace($pattern, ' ? ', $result);
+        
+        return $result;
+    }
+    
+    
+    
+    
+    /**
+     * @param array $options
      */
     public static function List($options)
     {
