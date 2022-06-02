@@ -12,7 +12,7 @@ class DynaList
     //public static $database;
     //public static $username;
     //public static $password;
-    //public static $connection;
+    public static $connection;
     
     /**
      * @param array $info
